@@ -1,0 +1,55 @@
+name: Code Coverage (C)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.c'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.c'
+
+jobs:
+  test:
+    name: Run Tests and Upload Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y lcov gcovr gcc
+
+      - name: Compile all .c files with coverage flags
+        run: |
+          # Compile all .c files in the root directory with coverage flags
+          for file in $(find . -maxdepth 1 -name "*.c"); do
+            gcc -fprofile-arcs -ftest-coverage -c "$file"
+          done
+
+          # Link all .o files to create the test executable
+          gcc -fprofile-arcs -ftest-coverage -o test_executable *.o
+
+      - name: Run tests
+        run: ./test_executable
+
+      - name: Generate gcov coverage report for all .c files
+        run: |
+          # Generate .gcov files for each .c file in the root directory
+          for file in $(find . -maxdepth 1 -name "*.c"); do
+            gcov "$file"
+          done
+
+      - name: Upload Coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: gcov-coverage-report
+          path: ./*.gcov
+
+      - name: Clean up coverage files
+        run: rm -rf *.gcov *.gcda *.gcno *.o test_executable
