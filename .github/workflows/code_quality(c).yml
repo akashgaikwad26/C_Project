@@ -33,5 +33,5 @@ jobs:
       - name: Upload Cppcheck Report
         uses: actions/upload-artifact@v3
         with:
-          name: cppcheck-report
+          name: c_Quality_report
           path: cppcheck-report.xml
