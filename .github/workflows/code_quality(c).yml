@@ -24,12 +24,15 @@ jobs:
       - name: Install Cppcheck and Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cppcheck xsltproc
+          sudo apt-get install -y cppcheck xsltproc curl
 
       - name: Download cppcheck-htmlreport.xsl
         run: |
-          # Download the official XSLT file from Cppcheck repo
+          # Ensure correct URL for cppcheck-htmlreport.xsl
           curl -L -o cppcheck-htmlreport.xsl https://raw.githubusercontent.com/danmar/cppcheck/master/share/cppcheck/cppcheck-htmlreport.xsl
+
+          # Check if the XSLT file was downloaded successfully
+          ls -l cppcheck-htmlreport.xsl
 
       - name: Run Cppcheck and Generate XML Report
         run: |
