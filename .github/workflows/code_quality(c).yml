@@ -28,11 +28,14 @@ jobs:
 
       - name: Download cppcheck-htmlreport.xsl
         run: |
-          # Ensure correct URL for cppcheck-htmlreport.xsl
-          curl -L -o cppcheck-htmlreport.xsl https://raw.githubusercontent.com/danmar/cppcheck/master/share/cppcheck/cppcheck-htmlreport.xsl
+          # Use the correct URL for cppcheck-htmlreport.xsl
+          curl -L -o cppcheck-htmlreport.xsl https://raw.githubusercontent.com/danmar/cppcheck/main/htmlreport/cppcheck-htmlreport.xsl
 
-          # Check if the XSLT file was downloaded successfully
-          ls -l cppcheck-htmlreport.xsl
+          # Verify the XSLT file was downloaded successfully
+          if [ ! -f cppcheck-htmlreport.xsl ]; then
+            echo "Error: Failed to download cppcheck-htmlreport.xsl"
+            exit 1
+          fi
 
       - name: Run Cppcheck and Generate XML Report
         run: |
