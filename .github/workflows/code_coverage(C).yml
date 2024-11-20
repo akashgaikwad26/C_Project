@@ -13,10 +13,9 @@ on:
       - '**/*.c'
   workflow_dispatch:
 
-
 jobs:
   test:
-    name: Run Tests and Upload Coverage
+    name: Run Tests and Generate HTML Coverage Report
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -40,18 +39,16 @@ jobs:
       - name: Run tests
         run: ./test_executable
 
-      - name: Generate gcov coverage report for all .c files
+      - name: Generate HTML coverage report using gcovr
         run: |
-          # Generate .gcov files for each .c file in the root directory
-          for file in $(find . -maxdepth 1 -name "*.c"); do
-            gcov "$file"
-          done
+          # Generate the HTML coverage report
+          gcovr --html --html-details -o coverage.html
 
-      - name: Upload Coverage report
+      - name: Upload HTML Coverage Report
         uses: actions/upload-artifact@v3
         with:
-          name: c_coverage_report
-          path: ./*.gcov
+          name: c_coverage_html_report
+          path: coverage.html
 
       - name: Clean up coverage files
-        run: rm -rf *.gcov *.gcda *.gcno *.o test_executable
+        run: rm -rf *.gcov *.gcda *.gcno *.o test_executable coverage.html
