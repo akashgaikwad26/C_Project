@@ -21,17 +21,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install Cppcheck
+      - name: Install Cppcheck and Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cppcheck
-      - name: Run Cppcheck
-        run: |
-          cppcheck --enable=all --inconclusive --xml . 2> cppcheck-report.xml || true
-        continue-on-error: true  # Allows workflow to continue even if linting finds issues
+          sudo apt-get install -y cppcheck xsltproc
 
-      - name: Upload Cppcheck Report
+      - name: Run Cppcheck and Generate Reports
+        run: |
+          # Run Cppcheck and save XML output
+          cppcheck --enable=all --inconclusive --xml . 2> cppcheck-report.xml || true
+
+          # Convert XML to HTML using XSLT
+          xsltproc /usr/share/cppcheck/cppcheck-htmlreport.xsl cppcheck-report.xml > cppcheck-report.html || true
+
+      - name: Upload Cppcheck HTML Report
         uses: actions/upload-artifact@v3
         with:
-          name: c_Quality_report
-          path: cppcheck-report.xml
+          name: Cppcheck_HTML_Report
+          path: cppcheck-report.html
