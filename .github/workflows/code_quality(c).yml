@@ -24,12 +24,7 @@ jobs:
       - name: Install Cppcheck and Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cppcheck xsltproc curl
-
-      - name: Check if cppcheck-htmlreport.xsl exists
-        run: |
-          # Ensure cppcheck-htmlreport.xsl file exists in the repository
-          ls -l tools/cppcheck-htmlreport.xsl
+          sudo apt-get install -y cppcheck curl
 
       - name: Run Cppcheck and Generate XML Report
         run: |
@@ -41,23 +36,13 @@ jobs:
             echo "Cppcheck report is empty. No issues found." >> cppcheck-report.xml
           fi
 
-      - name: Generate HTML Report from XML using Local XSLT
+      - name: Generate HTML Report from XML using cppcheck-htmlreport
         run: |
-          # Check that cppcheck report is generated
-          if [ -f cppcheck-report.xml ]; then
-            # Convert the XML report to HTML using the XSLT located in the tools/ directory
-            xsltproc tools/cppcheck-htmlreport.xsl cppcheck-report.xml > cppcheck-report.html || true
-          else
-            echo "No XML report generated. Exiting." > cppcheck-report.html
-          fi
-
-      - name: Generate Additional HTML Report Using cppcheck-htmlreport
-        run: |
-          # Generate a more detailed HTML report using cppcheck-htmlreport
-          <cppcheck directory>/htmlreport/cppcheck-htmlreport --file=cppcheck-report.xml --title=LibreOffice --report-dir=cppcheck_reports --source-dir=. || true
+          # Generate an HTML report from the cppcheck XML file using cppcheck-htmlreport
+          cppcheck-htmlreport --file=cppcheck-report.xml --title=LibreOffice --report-dir=cppcheck_reports --source-dir=. || true
 
       - name: Upload Cppcheck HTML Report
         uses: actions/upload-artifact@v3
         with:
           name: Cppcheck_HTML_Report
-          path: cppcheck-report.html
+          path: cppcheck_reports/*.html
