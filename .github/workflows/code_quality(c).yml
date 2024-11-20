@@ -21,17 +21,43 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install Cppcheck
+      - name: Install Cppcheck and Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cppcheck
-      - name: Run Cppcheck
-        run: |
-          cppcheck --enable=all --inconclusive --html . 2> cppcheck-report.html || true
-        continue-on-error: true  # Allows workflow to continue even if linting finds issues
+          sudo apt-get install -y cppcheck xsltproc curl
 
-      - name: Upload Cppcheck Report
+      - name: Check if cppcheck-htmlreport.xsl exists
+        run: |
+          # Ensure cppcheck-htmlreport.xsl file exists in the repository
+          ls -l tools/cppcheck-htmlreport.xsl
+
+      - name: Run Cppcheck and Generate XML Report
+        run: |
+          # Run cppcheck on the C code files and output to an XML file
+          cppcheck --enable=all --inconclusive --xml . 2> cppcheck-report.xml || true
+
+          # Check if the XML report is empty
+          if [ ! -s cppcheck-report.xml ]; then
+            echo "Cppcheck report is empty. No issues found." >> cppcheck-report.xml
+          fi
+
+      - name: Generate HTML Report from XML using Local XSLT
+        run: |
+          # Check that cppcheck report is generated
+          if [ -f cppcheck-report.xml ]; then
+            # Convert the XML report to HTML using the XSLT located in the tools/ directory
+            xsltproc tools/cppcheck-htmlreport.xsl cppcheck-report.xml > cppcheck-report.html || true
+          else
+            echo "No XML report generated. Exiting." > cppcheck-report.html
+          fi
+
+      - name: Generate Additional HTML Report Using cppcheck-htmlreport
+        run: |
+          # Generate a more detailed HTML report using cppcheck-htmlreport
+          <cppcheck directory>/htmlreport/cppcheck-htmlreport --file=cppcheck-report.xml --title=LibreOffice --report-dir=cppcheck_reports --source-dir=. || true
+
+      - name: Upload Cppcheck HTML Report
         uses: actions/upload-artifact@v3
         with:
-          name: c_Quality_report
+          name: Cppcheck_HTML_Report
           path: cppcheck-report.html
