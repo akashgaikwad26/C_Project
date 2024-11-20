@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - '**/*.c'
-  pull_request: 
+  pull_request:
     branches:
       - main
     paths:
@@ -28,20 +28,28 @@ jobs:
 
       - name: Download cppcheck-htmlreport.xsl
         run: |
+          # Download the official XSLT file from Cppcheck repo
           curl -L -o cppcheck-htmlreport.xsl https://raw.githubusercontent.com/danmar/cppcheck/master/share/cppcheck/cppcheck-htmlreport.xsl
 
-      - name: Run Cppcheck and Generate Reports
+      - name: Run Cppcheck and Generate XML Report
         run: |
-          # Run Cppcheck and save XML output
+          # Run cppcheck on the C code files and output to an XML file
           cppcheck --enable=all --inconclusive --xml . 2> cppcheck-report.xml || true
 
-          # Check if the XML report has any issues
+          # Check if the XML report is empty
           if [ ! -s cppcheck-report.xml ]; then
-            echo "Cppcheck report is empty, no issues found."
+            echo "Cppcheck report is empty. No issues found." >> cppcheck-report.xml
           fi
 
-          # Convert XML to HTML using the downloaded XSLT
-          xsltproc cppcheck-htmlreport.xsl cppcheck-report.xml > cppcheck-report.html || true
+      - name: Generate HTML Report from XML
+        run: |
+          # Check that cppcheck report is generated
+          if [ -f cppcheck-report.xml ]; then
+            # Convert the XML report to HTML using the XSLT
+            xsltproc cppcheck-htmlreport.xsl cppcheck-report.xml > cppcheck-report.html || true
+          else
+            echo "No XML report generated. Exiting." > cppcheck-report.html
+          fi
 
       - name: Upload Cppcheck HTML Report
         uses: actions/upload-artifact@v3
