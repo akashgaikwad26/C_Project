@@ -15,23 +15,57 @@ on:
 
 jobs:
   lint:
-    name: Lint C Codebase
+    name: Analyze C Codebase
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install Cppcheck
+      - name: Install Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cppcheck
-      - name: Run Cppcheck
-        run: |
-          cppcheck --enable=all --inconclusive --xml . 2> cppcheck-report.xml || true
-        continue-on-error: true  # Allows workflow to continue even if linting finds issues
+          sudo apt-get install -y cppcheck clang clang-format xsltproc
 
-      - name: Upload Cppcheck Report
+      - name: Generate Combined HTML Report
+        run: |
+          # Create output directory
+          mkdir -p reports
+
+          # Run Cppcheck and generate XML report
+          cppcheck --enable=all --inconclusive --xml . 2> reports/cppcheck-report.xml || true
+          # Convert XML to HTML using XSLT
+          xsltproc /usr/share/cppcheck/cppcheck-htmlreport.xsl reports/cppcheck-report.xml > reports/cppcheck-report.html || true
+
+          # Run Clang-Tidy on each C file and save output to a text file
+          echo "<h2>Clang-Tidy Analysis</h2>" > reports/clang-tidy-report.html
+          for file in $(find . -name '*.c'); do
+            echo "<h3>File: $file</h3><pre>" >> reports/clang-tidy-report.html
+            clang-tidy "$file" -- >> reports/clang-tidy-report.html || true
+            echo "</pre>" >> reports/clang-tidy-report.html
+          done
+
+          # Run Clang-Format on each C file and save formatted code
+          echo "<h2>Clang-Format Output</h2>" > reports/clang-format-report.html
+          mkdir -p formatted_code
+          for file in $(find . -name '*.c'); do
+            formatted_file="formatted_code/$(basename "$file")"
+            clang-format "$file" > "$formatted_file"
+            echo "<h3>File: $(basename "$file")</h3><pre>" >> reports/clang-format-report.html
+            cat "$formatted_file" >> reports/clang-format-report.html
+            echo "</pre>" >> reports/clang-format-report.html
+          done
+
+          # Combine all reports into a single HTML
+          echo "<html><head><title>Code Quality Report</title></head><body>" > reports/combined-report.html
+          echo "<h1>Code Quality Report</h1>" >> reports/combined-report.html
+          echo "<h2>Cppcheck Analysis</h2>" >> reports/combined-report.html
+          cat reports/cppcheck-report.html >> reports/combined-report.html
+          cat reports/clang-tidy-report.html >> reports/combined-report.html
+          cat reports/clang-format-report.html >> reports/combined-report.html
+          echo "</body></html>" >> reports/combined-report.html
+
+      - name: Upload Combined HTML Report
         uses: actions/upload-artifact@v3
         with:
-          name: c_Quality_report
-          path: cppcheck-report.xml
+          name: C_Code_Quality_Report
+          path: reports/combined-report.html
