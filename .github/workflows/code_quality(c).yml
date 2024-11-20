@@ -15,52 +15,23 @@ on:
 
 jobs:
   lint:
-    name: Generate Cppcheck HTML Report with Quality Score
+    name: Lint C Codebase
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install Cppcheck and Dependencies
+      - name: Install Cppcheck
         run: |
           sudo apt-get update
-          sudo apt-get install -y cppcheck xsltproc
-
-      - name: Run Cppcheck and Generate Reports
+          sudo apt-get install -y cppcheck
+      - name: Run Cppcheck
         run: |
-          # Create output directory
-          mkdir -p reports
+          cppcheck --enable=all --inconclusive --xml . 2> cppcheck-report.xml || true
+        continue-on-error: true  # Allows workflow to continue even if linting finds issues
 
-          # Run Cppcheck and generate XML report
-          cppcheck --enable=all --inconclusive --xml . 2> reports/cppcheck-report.xml || true
-
-          # Convert XML to HTML using XSLT
-          xsltproc /usr/share/cppcheck/cppcheck-htmlreport.xsl reports/cppcheck-report.xml > reports/cppcheck-report.html || true
-
-      - name: Calculate Code Quality Percentage
-        run: |
-          # Count total lines of code (LOC) in .c files
-          LOC=$(find . -name "*.c" | xargs wc -l | grep "total" | awk '{print $1}')
-          LOC=${LOC:-0}  # Default to 0 if no .c files found
-
-          # Count total issues from the XML report
-          TOTAL_ISSUES=$(grep '<error' reports/cppcheck-report.xml | wc -l)
-          TOTAL_ISSUES=${TOTAL_ISSUES:-0}  # Default to 0 if no issues found
-
-          # Calculate quality percentage
-          if [ "$LOC" -gt 0 ]; then
-            QUALITY=$((100 - (TOTAL_ISSUES * 100 / LOC)))
-            QUALITY=$((QUALITY < 0 ? 0 : QUALITY))  # Ensure quality is not negative
-          else
-            QUALITY=100  # No LOC, assume perfect quality
-          fi
-
-          # Append quality percentage to HTML report
-          echo "<h1>Code Quality: ${QUALITY}%</h1>" > reports/quality-score.html
-          cat reports/quality-score.html reports/cppcheck-report.html > reports/combined-report.html
-
-      - name: Upload Combined HTML Report
+      - name: Upload Cppcheck Report
         uses: actions/upload-artifact@v3
         with:
-          name: Cppcheck_HTML_Report_with_Quality
-          path: reports/combined-report.html
+          name: c_Quality_report
+          path: cppcheck-report.xml
