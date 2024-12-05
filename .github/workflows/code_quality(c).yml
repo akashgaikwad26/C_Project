@@ -12,6 +12,11 @@ on:
     paths:
       - '**/*.c'
   workflow_dispatch:
+    inputs:
+      custom_username:
+        description: 'Enter custom username (default is "default-user")'
+        required: false
+        default: 'default-user'
 
 jobs:
   lint:
@@ -19,30 +24,63 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Cppcheck and Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cppcheck curl
+          sudo apt-get install -y cppcheck
 
       - name: Run Cppcheck and Generate XML Report
         run: |
-          # Run cppcheck on the C code files and output to an XML file
+          # Run cppcheck on all C files in the repo and output to an XML file
           cppcheck --enable=all --inconclusive --xml . 2> cppcheck-report.xml || true
 
-          # Check if the XML report is empty
+          # If the XML report is empty, add a message
           if [ ! -s cppcheck-report.xml ]; then
-            echo "Cppcheck report is empty. No issues found." >> cppcheck-report.xml
+            echo "<errors>No issues found by Cppcheck.</errors>" > cppcheck-report.xml
           fi
 
-      - name: Generate HTML Report from XML using cppcheck-htmlreport
+      - name: Generate HTML Report from XML
         run: |
-          # Generate an HTML report from the cppcheck XML file using cppcheck-htmlreport
-          cppcheck-htmlreport --file=cppcheck-report.xml --title=LibreOffice --report-dir=cppcheck_reports --source-dir=. || true
+          # Generate an HTML report using cppcheck-htmlreport
+          cppcheck-htmlreport --file=cppcheck-report.xml --report-dir=cppcheck_reports --source-dir=. || true
 
-      - name: Upload Cppcheck HTML Report
+      - name: Move Cppcheck Reports to docs/
+        run: |
+          # Use a custom username from workflow inputs or default to "default-user"
+          USERNAME="${{ github.event.inputs.custom_username || 'default-user' }}"
+
+          # Define the path for the user's folder in the docs directory
+          DOCS_FOLDER="docs/$USERNAME"
+
+          # Create the docs folder if it doesn't exist
+          mkdir -p "$DOCS_FOLDER"
+
+          # Move the cppcheck HTML report to the user's folder in the docs directory
+          if [ -d "cppcheck_reports" ]; then
+            mv cppcheck_reports/* "$DOCS_FOLDER/"
+          else
+            echo "No HTML report found. Exiting."
+            exit 1
+          fi
+
+      - name: Upload Cppcheck HTML Report as Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: Cppcheck_HTML_Report
-          path: cppcheck_reports/*.html
+          name: cppcheck-html-report
+          path: docs/${{ github.event.inputs.custom_username || 'default-user' }}/
+
+      - name: Commit and Push Cppcheck Reports to GitHub Pages
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          # Add and commit the cppcheck reports
+          git add docs/${{ github.event.inputs.custom_username || 'default-user' }}/
+          git commit -m "Update Cppcheck report for ${{ github.event.inputs.custom_username || 'default-user' }}"
+
+          # Push the changes to GitHub Pages
+          git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }} main --force
