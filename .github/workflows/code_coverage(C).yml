@@ -30,6 +30,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y lcov gcovr gcc
+
       - name: Compile all .c files with coverage flags
         run: |
           # Compile all .c files in the root directory with coverage flags
@@ -38,6 +39,7 @@ jobs:
           done
           # Link all .o files to create the test executable
           gcc -fprofile-arcs -ftest-coverage -o test_executable *.o
+
       - name: Run tests
         run: ./test_executable
 
@@ -47,11 +49,21 @@ jobs:
           gcovr --html --html-details -o coverage.html
           gcovr > coverage.txt
 
+      - name: Debug Coverage Output
+        run: |
+          # Print the contents of the coverage.txt file to verify its structure
+          echo "Contents of coverage.txt:"
+          cat coverage.txt
+
       - name: Extract Coverage Percentage
         id: extract-coverage
         run: |
           # Extract the line coverage percentage from the gcovr text output
-          COVERAGE=$(grep -oP 'lines:\s+\K[0-9.]+(?=%)' coverage.txt)
+          COVERAGE=$(grep -oP 'lines:\s+\K[0-9]+\.[0-9]+(?=%)' coverage.txt || echo "0")
+          if [[ -z "$COVERAGE" || "$COVERAGE" == "0" ]]; then
+            echo "Error: Coverage percentage not found in coverage.txt"
+            exit 1
+          fi
           echo "Coverage Percentage: $COVERAGE%"
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
 
@@ -65,6 +77,7 @@ jobs:
           mkdir -p "$DOCS_FOLDER"
           # Move the HTML coverage report to the user's folder in the docs directory
           mv coverage.html "$DOCS_FOLDER/coverage.html"
+
       - name: Upload HTML Coverage Report as Artifact
         uses: actions/upload-artifact@v3
         with:
@@ -82,5 +95,6 @@ jobs:
           git commit -m "Update C coverage report for ${{ github.event.inputs.custom_username || 'default-user' }}"
           # Push the changes to GitHub Pages
           git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }} main --force
+
       - name: Clean up coverage files
         run: rm -rf *.gcov *.gcda *.gcno *.o test_executable coverage.txt
