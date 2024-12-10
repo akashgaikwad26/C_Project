@@ -104,7 +104,7 @@ jobs:
               \"userid\": \"$USER_ID\",
               \"projectid\": \"$projectid\",
               \"recordtime\": \"$LAST_REQUEST_TIME\",
-            \"coverage\": \"${{ env.COVERAGE }}\"
+            \"coverage\": \"${{ C : env.COVERAGE }}\"
             }"
 
       - name: Clean up coverage files
