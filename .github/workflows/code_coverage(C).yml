@@ -1,46 +1,86 @@
-name: Code Coverage (JS)
+name: Code Coverage (C)
 
 on:
   push:
     branches:
       - main
     paths:
-      - '**/*.js'
+      - '**/*.c'
   pull_request:
     branches:
       - main
     paths:
-      - '**/*.js'
+      - '**/*.c'
+  workflow_dispatch:
+    inputs:
+      custom_username:
+        description: 'Enter custom username (default is "default-user")'
+        required: false
+        default: 'default-user'
 
 jobs:
-  coverage:
-    name: Calculate Code Coverage
+  test:
+    name: Run Tests and Generate HTML Coverage Report
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run Tests and Calculate Coverage
-        id: coverage
+      - name: Set up dependencies
         run: |
-          # Run tests with coverage
-          npx jest --coverage
-          
-          # Extract coverage percentage from coverage-summary.json
-          COVERAGE_PERCENT=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
-          echo "COVERAGE_PERCENT=$COVERAGE_PERCENT" >> $GITHUB_ENV
-          echo "Coverage Percentage: $COVERAGE_PERCENT%"
+          sudo apt update
+          sudo apt install -y lcov gcovr gcc
+      - name: Compile all .c files with coverage flags
+        run: |
+          # Compile all .c files in the root directory with coverage flags
+          for file in $(find . -maxdepth 1 -name "*.c"); do
+            gcc -fprofile-arcs -ftest-coverage -c "$file"
+          done
+          # Link all .o files to create the test executable
+          gcc -fprofile-arcs -ftest-coverage -o test_executable *.o
+      - name: Run tests
+        run: ./test_executable
 
-      - name: Save Coverage to Database
+      - name: Generate HTML and Text coverage reports using gcovr
+        run: |
+          # Generate HTML and text coverage reports
+          gcovr --html --html-details -o coverage.html
+          gcovr > coverage.txt
+
+      - name: Extract Coverage Percentage
+        id: extract-coverage
+        run: |
+          # Extract the line coverage percentage from the gcovr text output
+          COVERAGE=$(grep -oP 'lines:\s+\K[0-9.]+(?=%)' coverage.txt)
+          echo "Coverage Percentage: $COVERAGE%"
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+
+      - name: Move Coverage Report to docs/
+        run: |
+          # Use a custom username from workflow inputs or default to "default-user"
+          USERNAME="${{ github.event.inputs.custom_username || 'default-user' }}"
+          # Define the path for the user's folder in the docs directory
+          DOCS_FOLDER="docs/$USERNAME"
+          # Create the docs folder if it doesn't exist
+          mkdir -p "$DOCS_FOLDER"
+          # Move the HTML coverage report to the user's folder in the docs directory
+          mv coverage.html "$DOCS_FOLDER/coverage.html"
+      - name: Upload HTML Coverage Report as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: c_coverage_html_report
+          path: docs/${{ github.event.inputs.custom_username || 'default-user' }}/coverage.html
+
+      - name: Commit and Push Coverage Report to GitHub Pages
         env:
-          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          # Save coverage percentage to database
-          curl -X POST -H "Content-Type: application/json" -d '{
-            "file": "example.js",
-            "metric": "coverage",
-            "value": "'$COVERAGE_PERCENT'"
-          }' $DB_CONNECTION_STRING
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          # Add and commit the coverage report
+          git add docs/${{ github.event.inputs.custom_username || 'default-user' }}/
+          git commit -m "Update C coverage report for ${{ github.event.inputs.custom_username || 'default-user' }}"
+          # Push the changes to GitHub Pages
+          git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }} main --force
+      - name: Clean up coverage files
+        run: rm -rf *.gcov *.gcda *.gcno *.o test_executable coverage.txt
