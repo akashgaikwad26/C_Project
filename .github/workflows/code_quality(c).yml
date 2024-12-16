@@ -62,7 +62,7 @@ jobs:
             echo "No logical lines of code found. Setting quality score to 0."
             QUALITY_SCORE=0
           else
-            QUALITY_SCORE=$(awk "BEGIN {printf \"%.2f\", 10.0 - ((5 * $ERROR_COUNT + $WARNING_COUNT + $CONVENTIONS_COUNT) / $LLOC) * 10}")
+            QUALITY_SCORE=$(awk "BEGIN {printf \"%.2f\", ((5 * $ERROR_COUNT + $WARNING_COUNT + $CONVENTIONS_COUNT) / $LLOC) * 10 -10.0}")
           fi
 
           echo "Quality Score: $QUALITY_SCORE"
