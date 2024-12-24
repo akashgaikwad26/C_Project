@@ -37,31 +37,25 @@ jobs:
 
       - name: Run Cppcheck and Generate XML Report
         run: |
-          # Run cppcheck on all C files in the repo and output to an XML file
           cppcheck --enable=all --inconclusive --xml . 2> cppcheck-report.xml || true
 
-          # If the XML report is empty, add a message
           if [ ! -s cppcheck-report.xml ]; then
             echo "<errors>No issues found by Cppcheck.</errors>" > cppcheck-report.xml
           fi
 
       - name: Generate HTML Report from XML
         run: |
-          # Generate an HTML report using cppcheck-htmlreport
           cppcheck-htmlreport --file=cppcheck-report.xml --report-dir=cppcheck_reports --source-dir=. || true
 
       - name: Calculate Quality Score
         id: calculate_score
         run: |
-          # Extract errors, warnings, and convention counts from the cppcheck XML report
           ERROR_COUNT=$(xmllint --xpath "count(//error[@severity='error'])" cppcheck-report.xml)
           WARNING_COUNT=$(xmllint --xpath "count(//error[@severity='warning'])" cppcheck-report.xml)
           CONVENTIONS_COUNT=$(xmllint --xpath "count(//error[@severity='style'])" cppcheck-report.xml)
 
-          # Calculate Logical Lines of Code (LLOC) as the sum of errors, warnings, and conventions
           LLOC=$((ERROR_COUNT + WARNING_COUNT + CONVENTIONS_COUNT))
 
-          # Calculate the quality score using the formula
           if [ "$LLOC" -eq 0 ]; then
             echo "No logical lines of code found. Setting quality score to 0."
             QUALITY_SCORE=0
@@ -72,24 +66,17 @@ jobs:
           echo "Quality Score: $QUALITY_SCORE"
           echo "quality_score=$QUALITY_SCORE" >> $GITHUB_ENV
 
-      - name: Append Quality Score to HTML Report
-        run: |
-          QUALITY_SCORE=${{ env.quality_score }}
-          echo "<h2>Quality Score: $QUALITY_SCORE</h2>" >> cppcheck_reports/index.html
+  
 
       - name: Move Cppcheck Reports to docs/
         run: |
-          # Use custom username and project ID from workflow inputs or default to placeholders
           USERNAME="${{ github.event.inputs.custom_username || 'default-user' }}"
           PROJECT_ID="${{ github.event.inputs.project_id || 'default-project' }}"
 
-          # Define the path for the user's folder in the docs directory
           DOCS_FOLDER="docs/${USERNAME}/${PROJECT_ID}"
 
-          # Create the docs folder if it doesn't exist
           mkdir -p "$DOCS_FOLDER"
 
-          # Move the cppcheck HTML report to the user's folder in the docs directory
           if [ -d "cppcheck_reports" ]; then
             mv cppcheck_reports/* "$DOCS_FOLDER/"
           else
