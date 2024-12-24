@@ -70,10 +70,10 @@ jobs:
         id: extract-coverage
         if: env.SUCCESS == 'true'
         run: |
-          # Extract the line coverage percentage from the gcovr text output
-          COVERAGE=$(grep -oP 'TOTAL\s+\d+\s+\d+\s+(\d+\.\d+)%' coverage.txt | sed -E 's/.* ([0-9.]+)%/\1/')
-          echo "Coverage Percentage: $COVERAGE%"
-          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+            # Extract the line coverage percentage from the gcovr text output
+            COVERAGE=$(grep -oP 'TOTAL\s+\d+\s+\d+\s+(\d+\.\d+)%' coverage.txt | sed -E 's/.* ([0-9.]+)%/\1/')
+            echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+            echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
 
       - name: Move Coverage Report to docs/
         run: |
