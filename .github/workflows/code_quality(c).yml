@@ -73,7 +73,7 @@ jobs:
           USERNAME="${{ github.event.inputs.custom_username || 'default-user' }}"
           PROJECT_ID="${{ github.event.inputs.project_id || 'default-project' }}"
 
-          DOCS_FOLDER="docs/${USERNAME}/${PROJECT_ID}"
+          DOCS_FOLDER="docs/${USERNAME}/${PROJECT_ID}/code_quality"
 
           mkdir -p "$DOCS_FOLDER"
 
