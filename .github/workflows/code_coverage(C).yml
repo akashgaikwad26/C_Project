@@ -96,18 +96,6 @@ jobs:
           git commit -m "Update C coverage report for ${{ github.event.inputs.custom_username || 'default-user' }}"
           git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }} main --force
 
-      - name: Comment on Pull Request with Coverage
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const coverage = process.env.COVERAGE || '0';
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `Code Coverage: ${coverage}%`
-            });
-
       - name: Call API to Insert Coverage Score
         run: |
           API_URL="https://dolphin-app-uzion.ondigitalocean.app/api/setCoverage?clientpublic=baef7468287a44d8ac3634026d9fb8d1&clientsecret=181a2f3171117c1bd164c88b1171c1b83114fc1712121b12"
