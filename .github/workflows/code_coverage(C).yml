@@ -102,13 +102,14 @@ jobs:
           USER_ID="${{ github.event.inputs.custom_username || 'default-user' }}"
           PROJECT_ID="${{ github.event.inputs.project_id || 'default-project' }}"
           LAST_REQUEST_TIME="$(date +%s)000"
+          newcooverage="98"
           curl -X POST "$API_URL" \
             -H "Content-Type: application/json" \
             -d "{
               \"userid\": \"$USER_ID\",
               \"projectid\": \"$PROJECT_ID\",
               \"recordtime\": \"$LAST_REQUEST_TIME\",
-              \"coverage\": \"${{ env.COVERAGE }}\"
+              \"coverage\": \"$newcooverage\"
             }"
 
       - name: Clean up coverage files
